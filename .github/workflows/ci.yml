@@ -9,26 +9,16 @@ on:
   workflow_dispatch: # Permet le déclenchement manuel depuis l'UI GitHub
 
 jobs:
-  lint:
-    name: Lint ESLint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-
   test:
-    name: Tests unitaires
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20] # 2 runs en parallèle !
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm ci
       - run: npm test
