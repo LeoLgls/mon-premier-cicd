@@ -25,8 +25,11 @@ WORKDIR /app
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/src ./src
 
+# Forcer l'environnement en mode production (méthode infaillible pour exclure Jest)
+ENV NODE_ENV=production
+
 # Installer UNIQUEMENT les dépendances de production
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Sécurité : utilisateur non-root
 USER node
