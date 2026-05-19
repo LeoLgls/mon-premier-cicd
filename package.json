@@ -15,7 +15,10 @@
   "license": "ISC",
   "jest": {
     "testEnvironment": "node",
-    "collectCoverageFrom": ["src/**/*.js", "!src/server.js"],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js"
+    ],
     "coverageThreshold": {
       "global": {
         "branches": 80,
@@ -24,12 +27,19 @@
         "statements": 80
       }
     },
-    "coverageReporters": ["lcov", "text", "json-summary"]
+    "coverageReporters": [
+      "lcov",
+      "text",
+      "json-summary"
+    ]
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "jest": "^30.4.2"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

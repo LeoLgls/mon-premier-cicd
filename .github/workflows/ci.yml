@@ -1,17 +1,17 @@
-name: CI — Lint, Tests & Coverage
+name: CI/CD — Tests, Build & Push Docker
 on:
   push:
-    branches: [ main, 'feature/**' ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # ── JOB 1 : Lint ──────────────────────────────────────
+  # ─── JOB 1 : Lint ─────────────────────────────────
   lint:
     name: 🔍 Lint ESLint
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
       - name: Vérification ESLint
         run: npm run lint
 
-  # ── JOB 2 : Tests avec matrice ─────────────────────────
+  # ─── JOB 2 : Tests ────────────────────────────────
   test:
     name: 🧪 Tests — Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
@@ -56,44 +56,40 @@ jobs:
           path: coverage/
           retention-days: 14
 
-  # ── JOB 3 : Rapport consolidé ─────────────────────────
-  report:
-    name: 📊 Rapport Coverage
+  # ─── JOB 3 : Build & Push Docker ──────────────────
+  docker:
+    name: 🐳 Docker Build & Push
     runs-on: ubuntu-latest
     needs: [ lint, test ]
-    if: always()
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Télécharger tous les rapports
-        uses: actions/download-artifact@v4
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login sur GHCR
+        uses: docker/login-action@v3
         with:
-          pattern: coverage-node-*
-          merge-multiple: false
-          path: all-coverage/
-      - name: Afficher le résumé dans Step Summary
-        run: |
-          echo '## 📊 Rapport de Couverture' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '| Version | Statements | Branches | Functions | Lines |' >> $GITHUB_STEP_SUMMARY
-          echo '|---------|-----------|---------|----------|-------|' >> $GITHUB_STEP_SUMMARY
-          for dir in all-coverage/coverage-node-*/; do
-            version=$(basename "$dir" | sed 's/coverage-node-//')
-            summary="$dir/coverage-summary.json"
-            if [ -f "$summary" ]; then
-              node -e "
-              const d = JSON.parse(require('fs').readFileSync('$summary','utf8')).total;
-              console.log('| Node ' + $version + ' | ' + d.statements.pct + '% | ' + d.branches.pct + '% | ' + d.functions.pct + '% | ' + d.lines.pct + '% |');
-              " >> $GITHUB_STEP_SUMMARY
-            fi
-          done
-      - name: Résultat global CI
-        run: |
-          lint_ok='${{ needs.lint.result }}'
-          test_ok='${{ needs.test.result }}'
-          echo "Lint: $lint_ok | Tests: $test_ok"
-          if [ "$lint_ok" != 'success' ] || [ "$test_ok" != 'success' ]; then
-            echo '❌ CI échoué' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
-          echo '✅ CI complet — tous les jobs sont verts' >> $GITHUB_STEP_SUMMARY
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extraire les métadonnées (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+      - name: Build & Push l'image Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
