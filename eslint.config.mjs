@@ -15,10 +15,18 @@ export default defineConfig([
   },
   { 
     files: ["**/*.js"], 
-    languageOptions: { sourceType: "commonjs" } 
+    languageOptions: { sourceType: "commonjs" },
+    rules: {
+      "no-var": "error",
+      "no-unused-vars": "error"
+    }
   },
   { 
     files: ["**/__tests__/**/*.js", "**/*.test.js"], 
-    languageOptions: { globals: globals.jest } 
+    languageOptions: { globals: globals.jest },
+    rules: {
+      "no-var": "error",
+      "no-unused-vars": "error"
+    }
   },
 ]);
