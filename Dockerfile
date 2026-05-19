@@ -26,7 +26,7 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/src ./src
 
 # Installer UNIQUEMENT les dépendances de production
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Sécurité : utilisateur non-root
 USER node
