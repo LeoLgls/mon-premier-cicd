@@ -67,6 +67,12 @@ jobs:
             console.log('| Lines | ' + t.lines.pct + '% |');
             " >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Commenter la PR avec la couverture
+        if: github.event_name == 'pull_request'
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          coverage-summary-path: ./coverage/coverage-summary.json
 
   # ─── JOB 3 : Résumé final ────────────────────────
   ci-success:
@@ -99,3 +105,4 @@ jobs:
           curl -X POST -H 'Content-type: application/json' \
           --data '{"text":"🔴 Pipeline CI échoué sur ${{ github.repository }} — ${{ github.sha }}"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
+  
