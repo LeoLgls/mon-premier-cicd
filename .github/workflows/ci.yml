@@ -1,24 +1,72 @@
-name: CI Pipeline
-
-# Déclencheurs : s'exécute à chaque push et pull_request sur main
+name: CI — Lint, Tests & Coverage
 on:
   push:
-    branches: [main]
+    branches: [ main, 'feature/**' ]
   pull_request:
-    branches: [main]
-  workflow_dispatch: # Permet le déclenchement manuel depuis l'UI GitHub
+    branches: [ main ]
+  workflow_dispatch:
 
+# ─── JOB 1 : Lint ───────────────────────────────
 jobs:
+  lint:
+    name: 🔍 Lint ESLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Installation des dépendances
+        run: npm ci
+      - name: Vérification ESLint
+        run: npm run lint
+
+  # ─── JOB 2 : Tests avec matrice ─────────────────
   test:
+    name: 🧪 Tests Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        node-version: [18, 20] # 2 runs en parallèle !
+        node-version: [18, 20]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-      - run: npm ci
-      - run: npm test
+      - name: Installation des dépendances
+        run: npm ci
+      - name: Tests unitaires + couverture
+        run: npm run test:ci
+      - name: Upload rapport de couverture
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 14
+
+  # ─── JOB 3 : Résumé final ────────────────────────
+  ci-success:
+    name: ✅ CI complet
+    runs-on: ubuntu-latest
+    needs: [ lint, test ]
+    if: always()
+    steps:
+      - name: Vérifier que tout est vert
+        run: |
+          if [ '${{ needs.lint.result }}' != 'success' ]; then
+            echo 'Lint a échoué !'
+            exit 1
+          fi
+          if [ '${{ needs.test.result }}' != 'success' ]; then
+            echo 'Tests ont échoué !'
+            exit 1
+          fi
+          echo 'CI entièrement vert ✓'
