@@ -86,3 +86,16 @@ jobs:
             exit 1
           fi
           echo 'CI entièrement vert ✓'
+
+  # ─── JOB 4 : Notifier en cas d'échec ────────────
+  notify-failure:
+    name: 🔔 Notifier échec
+    runs-on: ubuntu-latest
+    needs: [ lint, test ]
+    if: failure()
+    steps:
+      - name: Notifier via webhook Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🔴 Pipeline CI échoué sur ${{ github.repository }} — ${{ github.sha }}"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
