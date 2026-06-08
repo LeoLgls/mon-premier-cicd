@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Installer TOUTES les dépendances (dev + prod pour les tests)
-RUN npm ci
+RUN HUSKY=0 npm ci
 
 # Copier le code source
 COPY . .
@@ -29,7 +29,7 @@ COPY --from=builder /app/src ./src
 ENV NODE_ENV=production
 
 # Installer UNIQUEMENT les dépendances de production
-RUN npm ci
+RUN HUSKY=0 npm ci --omit=dev
 
 # Sécurité : utilisateur non-root
 USER node
