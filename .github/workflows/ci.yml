@@ -13,7 +13,7 @@ env:
 jobs:
   # ─── JOB 1 : Lint ─────────────────────────────────
   lint:
-    name: 🔍 Lint ESLint
+    name: 🔍 Lint ESLint + Prettier
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,6 +27,8 @@ jobs:
         run: npm ci
       - name: Vérification ESLint
         run: npm run lint
+      - name: Vérification Prettier
+        run: npm run format:check
 
   # ─── JOB 2 : Tests ────────────────────────────────
   test:
@@ -106,7 +108,6 @@ jobs:
     steps:
       - name: Déclencher le déploiement staging
         run: curl -s -X POST '${{ secrets.RENDER_STAGING_HOOK }}'
-
       - name: Health-check staging (10 tentatives, 15s entre chaque)
         run: |
           for i in {1..10}; do
@@ -128,7 +129,6 @@ jobs:
     steps:
       - name: Déclencher le déploiement production
         run: curl -s -X POST '${{ secrets.RENDER_PROD_HOOK }}'
-
       - name: Health-check production (10 tentatives, 15s entre chaque)
         run: |
           for i in {1..10}; do
@@ -149,77 +149,10 @@ jobs:
         run: |
           echo '# CI/CD Pipeline — Résumé' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
-          echo '## ✅ Status par étape' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
           echo '| Étape | Status |' >> $GITHUB_STEP_SUMMARY
           echo '|-------|--------|' >> $GITHUB_STEP_SUMMARY
-          echo '| 🔍 Lint | ${{ needs.lint.result == 'success' && '✓' || '✗' }} |' >> $GITHUB_STEP_SUMMARY
-          echo '| 🧪 Tests | ${{ needs.test.result == 'success' && '✓' || '✗' }} |' >> $GITHUB_STEP_SUMMARY
-          echo '| 🐳 Docker Build | ${{ needs.docker.result == 'success' && '✓' || '✗' }} |' >> $GITHUB_STEP_SUMMARY
-          echo '| 🚀 Staging | ${{ needs.deploy-staging.result == 'success' && '✓ ' || '✗ ' }}${{ vars.RENDER_STAGING_URL }} |' >> $GITHUB_STEP_SUMMARY
-          echo '| 🚀 Production | ${{ needs.deploy-production.result == 'success' && '✓ ' || '✗ ' }}${{ vars.RENDER_PROD_URL }} |' >> $GITHUB_STEP_SUMMARY
-          echo '' >> $GITHUB_STEP_SUMMARY
-          echo '## 📊 Détails' >> $GITHUB_STEP_SUMMARY
-          echo '- Commit: `${{ github.sha }}`' >> $GITHUB_STEP_SUMMARY
-          echo '- Branche: `${{ github.ref }}`' >> $GITHUB_STEP_SUMMARY
-          echo '- Auteur: `${{ github.actor }}`' >> $GITHUB_STEP_SUMMARY
-
-      - name: Notifier Slack en cas d'échec
-        if: failure()
-        run: |
-          PAYLOAD=$(cat <<EOF
-          {
-            "text": "🔴 Pipeline CI/CD échoué",
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Pipeline CI/CD — ÉCHEC* 🔴\n\nRepository: ${{ github.repository }}\nBranche: ${{ github.ref }}\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\nAuteur: ${{ github.actor }}"
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  { "type": "mrkdwn", "text": "*Lint:*\n${{ needs.lint.result }}" },
-                  { "type": "mrkdwn", "text": "*Tests:*\n${{ needs.test.result }}" },
-                  { "type": "mrkdwn", "text": "*Docker:*\n${{ needs.docker.result }}" },
-                  { "type": "mrkdwn", "text": "*Staging:*\n${{ needs.deploy-staging.result }}" }
-                ]
-              }
-            ]
-          }
-          EOF
-          )
-          curl -X POST -H 'Content-type: application/json' \
-            --data "$PAYLOAD" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      - name: Notifier Slack en cas de succès
-        if: success()
-        run: |
-          PAYLOAD=$(cat <<EOF
-          {
-            "text": "✅ Pipeline CI/CD réussi",
-            "blocks": [
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*Pipeline CI/CD — SUCCÈS* ✅\n\nRepository: ${{ github.repository }}\nBranche: ${{ github.ref }}\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\nAuteur: ${{ github.actor }}"
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  { "type": "mrkdwn", "text": "*Staging:*\n✓ <${{ vars.RENDER_STAGING_URL }}|Voir>" },
-                  { "type": "mrkdwn", "text": "*Production:*\n✓ <${{ vars.RENDER_PROD_URL }}|Voir>" }
-                ]
-              }
-            ]
-          }
-          EOF
-          )
-          curl -X POST -H 'Content-type: application/json' \
-            --data "$PAYLOAD" \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
+          echo "| 🔍 Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Docker Build | ${{ needs.docker.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Staging | ${{ needs.deploy-staging.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Production | ${{ needs.deploy-production.result }} |" >> $GITHUB_STEP_SUMMARY
