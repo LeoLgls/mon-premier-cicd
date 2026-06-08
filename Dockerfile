@@ -21,25 +21,18 @@ FROM node:18-alpine AS runtime
 
 WORKDIR /app
 
-# Copier uniquement ce qui est nécessaire depuis le stage builder
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/src ./src
 
-# Forcer l'environnement en mode production (méthode infaillible pour exclure Jest)
 ENV NODE_ENV=production
 
-# Installer UNIQUEMENT les dépendances de production
-RUN HUSKY=0 npm ci --omit=dev
+# Supprimer le script prepare (husky) avant d'installer
+RUN npm pkg delete scripts.prepare && npm ci --omit=dev
 
-# Sécurité : utilisateur non-root
 USER node
-
-# Port documenté
 EXPOSE 3000
 
-# Health check intégré
 HEALTHCHECK --interval=30s --timeout=3s \
   CMD wget -qO- http://localhost:3000/health || exit 1
 
-# Démarrer l'application
 CMD [ "node", "src/server.js" ]
